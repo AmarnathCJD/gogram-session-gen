@@ -32,6 +32,7 @@ const progressLine = document.querySelector('.progress-line');
 // WASM instance and state
 let wasmInstance = null;
 let wasmGo = null;
+let isGenerating = false; // Prevent duplicate calls
 let sessionState = {
     appId: '',
     appHash: '',
@@ -122,6 +123,8 @@ async function loadWasm() {
 
 // Global callback for session generation result
 window.onSessionGenerated = function(result) {
+    isGenerating = false;
+    
     if (result.success) {
         showSession(result.session, result.fullName);
         
@@ -200,6 +203,11 @@ window.copySessionString = function(sessionString) {
 
 // Send code
 sendCodeBtn.addEventListener('click', async () => {
+    if (isGenerating) {
+        addOutput('Already processing...', 'info');
+        return;
+    }
+    
     const appId = appIdInput.value.trim();
     const appHash = appHashInput.value.trim();
     let phoneNumber = phoneNumberInput.value.trim();
@@ -246,6 +254,7 @@ sendCodeBtn.addEventListener('click', async () => {
     sessionState.phoneNumber = phoneNumber;
     sessionState.botToken = botToken;
     
+    isGenerating = true;
     disableButton(sendCodeBtn);
     clearOutput();
     
@@ -271,6 +280,7 @@ sendCodeBtn.addEventListener('click', async () => {
         } catch (error) {
             addOutput(`ERROR: ${error.message}`, 'error');
             enableButton(sendCodeBtn);
+            isGenerating = false;
         }
         
         // Override console.log to catch WASM output
@@ -366,6 +376,7 @@ copyBtn.addEventListener('click', async () => {
 // Reset
 resetBtn.addEventListener('click', () => {
     // Reset form
+    isGenerating = false;
     appIdInput.value = '';
     appHashInput.value = '';
     phoneNumberInput.value = '';
