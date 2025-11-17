@@ -24,9 +24,6 @@ const verifyBtn = document.getElementById('verifyBtn');
 const resetBtn = document.getElementById('resetBtn');
 
 const outputArea = document.getElementById('outputArea');
-const sessionResult = document.getElementById('sessionResult');
-const sessionStringElement = document.getElementById('sessionString');
-const copyBtn = document.getElementById('copyBtn');
 
 // Progress steps
 const progressSteps = document.querySelectorAll('.progress-step');
@@ -157,19 +154,49 @@ function sendInputToWasm(type, value) {
 // Show session result
 function showSession(sessionString, userName) {
     updateProgress(3); // Move to Session step
-    sessionStringElement.textContent = sessionString;
-    sessionResult.style.display = 'block';
     resetBtn.style.display = 'flex';
     verifyBtn.style.display = 'none';
     
     if (userName) {
-        addOutput(`✓ Session generated successfully for ${userName}!`, 'success');
+        addOutput(`\n✓ Session generated successfully for ${userName}!`, 'success');
     } else {
-        addOutput('✓ Session generated successfully!', 'success');
+        addOutput('\n✓ Session generated successfully!', 'success');
     }
+    
+    // Add session string with copy button in terminal
+    const sessionDiv = document.createElement('div');
+    sessionDiv.className = 'session-line';
+    sessionDiv.innerHTML = `
+        <div class="session-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            <span>Session String:</span>
+        </div>
+        <div class="session-string-container">
+            <code class="session-string">${sessionString}</code>
+            <button class="copy-session-btn" onclick="copySessionString('${sessionString}')" title="Copy session">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+            </button>
+        </div>
+    `;
+    outputArea.appendChild(sessionDiv);
+    outputArea.scrollTop = outputArea.scrollHeight;
     
     enableButton(verifyBtn);
 }
+
+// Copy session string function
+window.copySessionString = function(sessionString) {
+    navigator.clipboard.writeText(sessionString).then(() => {
+        addOutput('✓ Session copied to clipboard!', 'success');
+    }).catch(() => {
+        addOutput('✗ Failed to copy session', 'error');
+    });
+};
 
 // Send code
 sendCodeBtn.addEventListener('click', async () => {
@@ -348,7 +375,6 @@ resetBtn.addEventListener('click', () => {
     // Reset UI
     codeGroup.style.display = 'none';
     passwordGroup.style.display = 'none';
-    sessionResult.style.display = 'none';
     sendCodeBtn.style.display = 'flex';
     verifyBtn.style.display = 'none';
     resetBtn.style.display = 'none';
