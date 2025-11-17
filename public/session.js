@@ -13,6 +13,7 @@ themeToggle.addEventListener('click', () => {
 const appIdInput = document.getElementById('appId');
 const appHashInput = document.getElementById('appHash');
 const phoneNumberInput = document.getElementById('phoneNumber');
+const botTokenInput = document.getElementById('botToken');
 const sendCodeBtn = document.getElementById('sendCodeBtn');
 
 const codeGroup = document.getElementById('codeGroup');
@@ -175,13 +176,19 @@ sendCodeBtn.addEventListener('click', async () => {
     const appId = appIdInput.value.trim();
     const appHash = appHashInput.value.trim();
     const phoneNumber = phoneNumberInput.value.trim();
+    const botToken = botTokenInput.value.trim();
     
-    if (!phoneNumber) {
-        addOutput('ERROR: Phone number is required', 'error');
+    if (!phoneNumber && !botToken) {
+        addOutput('ERROR: Phone number or bot token is required', 'error');
         return;
     }
     
-    if (!phoneNumber.startsWith('+')) {
+    if (phoneNumber && botToken) {
+        addOutput('ERROR: Use either phone number or bot token, not both', 'error');
+        return;
+    }
+    
+    if (phoneNumber && !phoneNumber.startsWith('+')) {
         addOutput('ERROR: Phone number must include country code (e.g., +1)', 'error');
         return;
     }
@@ -189,6 +196,7 @@ sendCodeBtn.addEventListener('click', async () => {
     sessionState.appId = appId;
     sessionState.appHash = appHash;
     sessionState.phoneNumber = phoneNumber;
+    sessionState.botToken = botToken;
     
     disableButton(sendCodeBtn);
     clearOutput();
@@ -202,7 +210,20 @@ sendCodeBtn.addEventListener('click', async () => {
     await new Promise(resolve => setTimeout(resolve, 500));
     
     if (window.generateSession) {
-        addOutput(`Sending code to ${phoneNumber}...`, 'info');
+        if (botToken) {
+            addOutput('Logging in as bot...', 'info');
+        } else {
+            addOutput(`Sending code to ${phoneNumber}...`, 'info');
+        }
+        try {
+            window.generateSession(appId, appHash, phoneNumber, botToken);
+            if (!botToken) {
+                updateProgress(2); // Move to Verify step (only for user login)
+            }
+        } catch (error) {
+            addOutput(`ERROR: ${error.message}`, 'error');
+            enableButton(sendCodeBtn);
+        }
         
         // Override console.log to catch WASM output
         const originalLog = console.log;
