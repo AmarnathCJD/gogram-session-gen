@@ -309,14 +309,13 @@ sendCodeBtn.addEventListener('click', async () => {
             } else if (msg.includes('ERROR')) {
                 enableButton(sendCodeBtn);
                 enableButton(verifyBtn);
+                isGenerating = false;
             }
         };
-        
-        // Call WASM function
-        window.generateSession(appId, appHash, phoneNumber);
     } else {
         addOutput('ERROR: Session generator not ready', 'error');
         enableButton(sendCodeBtn);
+        isGenerating = false;
     }
 });
 
