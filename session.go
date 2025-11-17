@@ -30,6 +30,7 @@ func generateSession(this js.Value, args []js.Value) interface{} {
 		appID := defaultAppID
 		appHash := defaultAppHash
 		phoneNumber := ""
+		botToken := ""
 
 		if len(args) > 0 && !args[0].IsNull() && !args[0].IsUndefined() {
 			inputAppID := args[0].String()
@@ -49,14 +50,17 @@ func generateSession(this js.Value, args []js.Value) interface{} {
 			phoneNumber = args[2].String()
 		}
 
-		if phoneNumber == "" {
-			fmt.Println("ERROR: Phone number is required")
-			return
+		if len(args) > 3 && !args[3].IsNull() && !args[3].IsUndefined() {
+			botToken = args[3].String()
 		}
 
 		fmt.Printf("Using APP_ID: %d\n", appID)
 		fmt.Printf("Using APP_HASH: %s\n", appHash[:8]+"...")
-		fmt.Printf("Phone number: %s\n", phoneNumber)
+		if botToken != "" {
+			fmt.Printf("Bot token: %s\n", botToken[:10]+"...")
+		} else {
+			fmt.Printf("Phone number: %s\n", phoneNumber)
+		}
 
 		cfg := tg.NewClientConfigBuilder(int32(appID), appHash).
 			WithMemorySession().
@@ -76,35 +80,55 @@ func generateSession(this js.Value, args []js.Value) interface{} {
 
 		fmt.Println("Client created successfully")
 
-		_, err = client.Login(phoneNumber, &tg.LoginOptions{
-			CodeCallback: func() (string, error) {
-				fmt.Println("PROMPT_CODE")
-				code := waitForInput("code")
-				fmt.Printf("Received code: %s\n", code)
-				return code, nil
-			},
-			PasswordCallback: func() (string, error) {
-				fmt.Println("PROMPT_PASSWORD")
-				password := waitForInput("password")
-				fmt.Println("Received password")
-				return password, nil
-			},
-		})
+		var firstName, lastName, fullName string
 
-		if err != nil {
-			fmt.Printf("ERROR: Login failed: %v\n", err)
-			return
-		}
+		if botToken != "" {
+			// Bot login
+			err = client.LoginBot(botToken)
+			if err != nil {
+				fmt.Printf("ERROR: Bot login failed: %v\n", err)
+				return
+			}
+			fmt.Println("Bot login successful!")
+			me := client.Me()
+			firstName = me.FirstName
+			lastName = me.LastName
+			fullName = firstName
+			if lastName != "" {
+				fullName = firstName + " " + lastName
+			}
+		} else {
+			// User login
+			_, err = client.Login(phoneNumber, &tg.LoginOptions{
+				CodeCallback: func() (string, error) {
+					fmt.Println("PROMPT_CODE")
+					code := waitForInput("code")
+					fmt.Printf("Received code: %s\n", code)
+					return code, nil
+				},
+				PasswordCallback: func() (string, error) {
+					fmt.Println("PROMPT_PASSWORD")
+					password := waitForInput("password")
+					fmt.Println("Received password")
+					return password, nil
+				},
+			})
 
-		fmt.Println("Login successful!")
+			if err != nil {
+				fmt.Printf("ERROR: Login failed: %v\n", err)
+				return
+			}
 
-		me := client.Me()
+			fmt.Println("Login successful!")
 
-		firstName := me.FirstName
-		lastName := me.LastName
-		fullName := firstName
-		if lastName != "" {
-			fullName = firstName + " " + lastName
+			me := client.Me()
+
+			firstName = me.FirstName
+			lastName = me.LastName
+			fullName = firstName
+			if lastName != "" {
+				fullName = firstName + " " + lastName
+			}
 		}
 
 		session := client.ExportSession()
@@ -119,7 +143,6 @@ func generateSession(this js.Value, args []js.Value) interface{} {
 
 		js.Global().Call("onSessionGenerated", result)
 		fmt.Printf("SESSION_SUCCESS: %s\n", fullName)
-		fmt.Printf("SESSION: %s\n", session)
 
 		// Terminate the program after session is generated
 		client.Terminate()
